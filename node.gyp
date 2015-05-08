@@ -88,6 +88,7 @@
       ],
 
       'sources': [
+        'src/node_async.cc',
         'src/async-wrap.cc',
         'src/fs_event_wrap.cc',
         'src/cares_wrap.cc',
