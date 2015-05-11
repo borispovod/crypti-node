@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="96dcb0b4-c6c9-4f9d-af44-f548466f3b69" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Makefile" afterPath="$PROJECT_DIR$/Makefile" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/node_async.cc" afterPath="$PROJECT_DIR$/src/node_async.cc" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/Release/test.js" afterPath="$PROJECT_DIR$/out/Release/test.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="node.iws" />
@@ -27,21 +27,21 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="node_async.cc" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="node_async.cc" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/node_async.cc">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.5358744" vertical-offset="1486" max-vertical-offset="8340">
-              <caret line="115" column="0" selection-start-line="115" selection-start-column="0" selection-end-line="115" selection-end-column="0" />
+            <state vertical-scroll-proportion="-10.307693" vertical-offset="7637" max-vertical-offset="8355">
+              <caret line="527" column="42" selection-start-line="527" selection-start-column="42" selection-end-line="527" selection-end-column="42" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="test.js" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="test.js" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/out/Release/test.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="98" max-vertical-offset="570">
-              <caret line="25" column="18" selection-start-line="25" selection-start-column="18" selection-end-line="25" selection-end-column="18" />
+            <state vertical-scroll-proportion="0.71398306" vertical-offset="38" max-vertical-offset="510">
+              <caret line="25" column="32" selection-start-line="25" selection-start-column="32" selection-end-line="25" selection-end-column="32" />
               <folding />
             </state>
           </provider>
@@ -60,8 +60,8 @@
       <file leaf-file-name="common.gypi" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/common.gypi">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="165" max-vertical-offset="3870">
-              <caret line="11" column="16" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="16" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="180" max-vertical-offset="3870">
+              <caret line="12" column="16" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="16" />
               <folding />
             </state>
           </provider>
@@ -70,8 +70,8 @@
       <file leaf-file-name="app.js" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/out/Release/app.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="150" max-vertical-offset="1095">
-              <caret line="26" column="9" selection-start-line="26" selection-start-column="9" selection-end-line="26" selection-end-column="9" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="195" max-vertical-offset="750">
+              <caret line="13" column="20" selection-start-line="13" selection-start-column="20" selection-end-line="13" selection-end-column="20" />
               <folding />
             </state>
           </provider>
@@ -147,10 +147,10 @@
         <option value="$PROJECT_DIR$/deps/uv/include/uv-darwin.h" />
         <option value="$PROJECT_DIR$/deps/uv/src/unix/internal.h" />
         <option value="$PROJECT_DIR$/deps/uv/src/unix/stream.c" />
-        <option value="$PROJECT_DIR$/out/Release/test.js" />
         <option value="$PROJECT_DIR$/Makefile" />
         <option value="$PROJECT_DIR$/out/Release/app.js" />
         <option value="$PROJECT_DIR$/src/node_async.cc" />
+        <option value="$PROJECT_DIR$/out/Release/test.js" />
       </list>
     </option>
   </component>
@@ -321,7 +321,7 @@
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.33034572" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.33034572" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="PlantUML" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -659,14 +659,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/spawn_sync.cc">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="3120" max-vertical-offset="15945">
-          <caret line="220" column="19" selection-start-line="220" selection-start-column="9" selection-end-line="220" selection-end-column="19" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/spawn_sync.h">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="1875" max-vertical-offset="3795">
@@ -701,8 +693,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/common.gypi">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="3870">
-          <caret line="11" column="16" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="16" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="180" max-vertical-offset="3870">
+          <caret line="12" column="16" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="16" />
           <folding />
         </state>
       </provider>
@@ -715,26 +707,34 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/out/Release/test.js">
+    <entry file="file://$PROJECT_DIR$/src/spawn_sync.cc">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="98" max-vertical-offset="570">
-          <caret line="25" column="18" selection-start-line="25" selection-start-column="18" selection-end-line="25" selection-end-column="18" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/out/Release/app.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="150" max-vertical-offset="1095">
-          <caret line="26" column="9" selection-start-line="26" selection-start-column="9" selection-end-line="26" selection-end-column="9" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="3120" max-vertical-offset="15945">
+          <caret line="220" column="19" selection-start-line="220" selection-start-column="9" selection-end-line="220" selection-end-column="19" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/node_async.cc">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.5358744" vertical-offset="1486" max-vertical-offset="8340">
-          <caret line="115" column="0" selection-start-line="115" selection-start-column="0" selection-end-line="115" selection-end-column="0" />
+        <state vertical-scroll-proportion="-10.307693" vertical-offset="7637" max-vertical-offset="8355">
+          <caret line="527" column="42" selection-start-line="527" selection-start-column="42" selection-end-line="527" selection-end-column="42" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/out/Release/app.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="195" max-vertical-offset="750">
+          <caret line="13" column="20" selection-start-line="13" selection-start-column="20" selection-end-line="13" selection-end-column="20" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/out/Release/test.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.71398306" vertical-offset="38" max-vertical-offset="510">
+          <caret line="25" column="32" selection-start-line="25" selection-start-column="32" selection-end-line="25" selection-end-column="32" />
           <folding />
         </state>
       </provider>

@@ -525,7 +525,8 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
     Local<Value> stringify_args[] = { messageCall };
     Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
     v8::String::Utf8Value message(str);
-    PostMessage(env, *message, message.length(), cb_id, Handle<Function>::Cast(args[1]));
+    const char *msg= "{\"test\":\"123\"}";
+    PostMessage(env, msg, strlen(msg), cb_id, Handle<Function>::Cast(args[1]));
   } else {
     return ThrowError(env->isolate(), "first argument should be a message object");
   }
