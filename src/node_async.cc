@@ -107,7 +107,8 @@ void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
 
 void registerMessage(uv_work_t *req) {
     Async_req *data = ((struct Async_req*)req->data);
-    write(4, data->data, data->data_length);
+
+    write(4, data->data, strlen(data->data));
 }
 
 void after_registerMessage(uv_work_t *req, int status) {
