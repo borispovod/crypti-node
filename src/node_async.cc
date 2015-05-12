@@ -419,11 +419,17 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
                                                                 "stringify")));
         Local<Value> stringify_args[] = { response };
         Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-        String::Utf8Value message(str);
+
+        const int length = str->Utf8Length() + 1;
+        uint8_t* buffer = new uint8_t[length];
+        //v8::String::Utf8Value m(str);
+        str->WriteOneByte(buffer, 0, length);
+
+        //String::Utf8Value message(str);
 
         Async_req* request = new Async_req;
-        request->data = *message;
-        request->data_length = message.length();
+        request->data = (char*)buffer;
+        request->data_length = strlen((char*)buffer);
         request->isolate = env->isolate();
 
         uv_work_t req;
@@ -470,11 +476,16 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
                                                                 "stringify")));
         Local<Value> stringify_args[] = { response };
         Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-        String::Utf8Value message(str);
+        //String::Utf8Value message(str);
+
+        const int length = str->Utf8Length() + 1;  // Add one for trailing zero byte.
+        uint8_t* buffer = new uint8_t[length];
+        //v8::String::Utf8Value m(str);
+        str->WriteOneByte(buffer, 0, length);
 
         Async_req* request = new Async_req;
-        request->data = *message;
-        request->data_length = message.length();
+        request->data = (char*)buffer;
+        request->data_length = strlen((char*)buffer);
         request->isolate = env->isolate();
 
         uv_work_t req;
@@ -525,7 +536,7 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
     Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
     const int length = str->Utf8Length() + 1;  // Add one for trailing zero byte.
     uint8_t* buffer = new uint8_t[length];
-    v8::String::Utf8Value m(str);
+    //v8::String::Utf8Value m(str);
     str->WriteOneByte(buffer, 0, length);
 
     //const char *msg= "{\"test\":\"123\"}";
