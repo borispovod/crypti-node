@@ -524,9 +524,14 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
                                                             "stringify")));
     Local<Value> stringify_args[] = { messageCall };
     Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-    v8::String::Utf8Value message(str);
-    const char *msg= "{\"test\":\"123\"}";
-    PostMessage(env, msg, strlen(msg), cb_id, Handle<Function>::Cast(args[1]));
+    const int length = str->Utf8Length() + 1;  // Add one for trailing zero byte.
+    uint8_t* buffer = new uint8_t[length];
+    v8::String::Utf8Value m(str);
+    str->WriteOneByte(buffer, 0, length);
+
+    //const char *msg= "{\"test\":\"123\"}";
+    //char *msg = *m;
+    PostMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
   } else {
     return ThrowError(env->isolate(), "first argument should be a message object");
   }
