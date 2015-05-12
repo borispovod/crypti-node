@@ -107,8 +107,7 @@ void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
 
 void registerMessage(uv_work_t *req) {
     Async_req *data = ((struct Async_req*)req->data);
-
-    write(4, data->data, strlen(data->data));
+    write(4, data->data, data->data_length);
 }
 
 void after_registerMessage(uv_work_t *req, int status) {
@@ -499,7 +498,7 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
   }
 
   if (args[0]->IsObject()) {
-    Handle<Object> messageCall = Handle<Object>::Cast(args[0]);
+    Local<Object> messageCall = Local<Object>::Cast(args[0]);
 
     Local<Value> messageObj = messageCall->Get(String::NewFromUtf8(env->isolate(), "message"));
 
@@ -517,16 +516,17 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
 
     // Stringify the JSON
     Local<Object> global = env->context()->Global();
-    Handle<Object> JSON = global->Get(String::NewFromUtf8(
+    Local<Object> JSON = global->Get(String::NewFromUtf8(
                                         env->isolate(), "JSON"))->ToObject();
-    Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(
+    Local<Function> JSON_stringify = Local<Function>::Cast(JSON->Get(
                                         String::NewFromUtf8(env->isolate(),
                                                             "stringify")));
     Local<Value> stringify_args[] = { messageCall };
-    Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-    v8::String::Utf8Value message(str);
-    const char *msg= "{\"test\":\"123\"}";
-    PostMessage(env, msg, strlen(msg), cb_id, Handle<Function>::Cast(args[1]));
+//    Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
+    Handle<String> str = String::NewFromUtf8(env->isolate(), "{\"test\":\"123\"}");
+    String::Utf8Value message(str);
+    const char *msg= *message;
+    PostMessage(env, msg, message.length(), cb_id, Handle<Function>::Cast(args[1]));
   } else {
     return ThrowError(env->isolate(), "first argument should be a message object");
   }
