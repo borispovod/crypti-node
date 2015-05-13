@@ -1,5 +1,5 @@
 #include "node.h"
-#include "node_async.h"
+#include "node_sandbox.h"
 
 #include "env.h"
 #include "env-inl.h"
@@ -11,15 +11,9 @@
 #include <string.h>
 #include <vector>
 
-using namespace std;
-
-#define CODIUS_ASYNC_IO_FD 3
-#define CODIUS_MAGIC_BYTES 0xC0D105FE
-
-static unsigned long int unique_id = 1;
 
 namespace node {
-namespace Async {
+namespace Sandbox {
 
 using v8::Context;
 using v8::Function;
@@ -37,8 +31,11 @@ using v8::TryCatch;
 using v8::JSON;
 using v8::Integer;
 using v8::Number;
+using namespace std;
 
-struct Async_req
+static unsigned long int unique_id = 1;
+
+struct Sandbox_req
 {
   const char *data;
   size_t data_length;
@@ -59,7 +56,7 @@ struct CBItem
     Persistent<Function> callback;
 };
 
-vector<Async_req *> cbs;
+vector<Sandbox_req *> cbs;
 
 
 void OnMessageResponse(const FunctionCallbackInfo<Value>& args);
@@ -68,7 +65,7 @@ void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
 {
   Handle<Object> response;
 
-  Async_req *data = ((struct Async_req*)req->data);
+  Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
   // Parse the response.
   Local<String> response_str = String::NewFromUtf8(data->isolate, buf,
@@ -106,20 +103,19 @@ void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
 
 
 void registerMessage(uv_work_t *req) {
-    Async_req *data = ((struct Async_req*)req->data);
+    Sandbox_req *data = ((struct Sandbox_req*)req->data);
     write(4, data->data, data->data_length);
 }
 
 void after_registerMessage(uv_work_t *req, int status) {
-    Async_req *data = ((struct Async_req*)req->data);
+    Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
     // register callback
     cbs.push_back(data);
 }
 
-void PostMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
-
-  Async_req* request = new Async_req;
+void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
+  Sandbox_req* request = new Sandbox_req;
 
   request->data = data;
   request->data_length = data_length;
@@ -134,7 +130,7 @@ void PostMessage(Environment* env, const char *data, size_t data_length, unsigne
 
 void AsyncMessage(uv_work_t* req, int something, const char *buf, size_t buf_len)
 {
-  Async_req *data = ((struct Async_req*)req->data);
+  Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
   Local<Value> args[1] = {
       String::NewFromUtf8(data->isolate, buf)
@@ -181,7 +177,7 @@ void recieveWork(uv_work_t *req) {
 }
 
 void after_recieveWork(uv_work_t *req, int status) {
-    Async_req *data = ((struct Async_req*)req->data);
+    Sandbox_req *data = ((struct Sandbox_req*)req->data);
     Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 
     Handle<Object> response;
@@ -211,12 +207,12 @@ void after_recieveWork(uv_work_t *req, int status) {
 
 
 void findCallback(uv_work_t *req) {
-    Async_req *data = ((struct Async_req*)req->data);
+    Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
     // find callback
     unsigned int cb_id = data->callback_id;
 
-    Async_req *callData;
+    Sandbox_req *callData;
     for (auto &i : cbs) {
         if (i->callback_id == data->callback_id) {
             callData = i;
@@ -228,7 +224,7 @@ void findCallback(uv_work_t *req) {
 }
 
 void after_findCallback(uv_work_t *req, int status) {
-    Async_req *data = ((struct Async_req*)req->data);
+    Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
     Handle<Object> response;
     Local<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
@@ -304,7 +300,7 @@ void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
                 return ThrowError(env->isolate(), "message argument should be an object");
             }
 
-            Async_req* request = new Async_req;
+            Sandbox_req* request = new Sandbox_req;
             request->data = buf->base;
             request->data_length = (size_t)nread;
             request->isolate = env->isolate();
@@ -345,7 +341,7 @@ void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
             }
 
             // process response
-            Async_req* request = new Async_req;
+            Sandbox_req* request = new Sandbox_req;
             request->data = buf->base;
             request->data_length = (size_t)nread;
             request->isolate = env->isolate();
@@ -374,7 +370,7 @@ void StartListen(Environment *env) {
 
 
 void sendWork(uv_work_t *req) {
-    Async_req *data = ((struct Async_req*)req->data);
+    Sandbox_req *data = ((struct Sandbox_req*)req->data);
     write(4, data->data, data->data_length);
 }
 
@@ -427,7 +423,7 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
 
         //String::Utf8Value message(str);
 
-        Async_req* request = new Async_req;
+        Sandbox_req* request = new Sandbox_req;
         request->data = (char*)buffer;
         request->data_length = strlen((char*)buffer);
         request->isolate = env->isolate();
@@ -483,7 +479,7 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
         //v8::String::Utf8Value m(str);
         str->WriteOneByte(buffer, 0, length);
 
-        Async_req* request = new Async_req;
+        Sandbox_req* request = new Sandbox_req;
         request->data = (char*)buffer;
         request->data_length = strlen((char*)buffer);
         request->isolate = env->isolate();
@@ -497,7 +493,7 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
 
 //////////
 
-static void PostMessage(const FunctionCallbackInfo<Value>& args) {
+static void SendMessage(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args.GetIsolate());
   HandleScope scope(env->isolate());
 
@@ -541,7 +537,7 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
 
     //const char *msg= "{\"test\":\"123\"}";
     //char *msg = *m;
-    PostMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
+    SendMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
   } else {
     return ThrowError(env->isolate(), "first argument should be a message object");
   }
@@ -552,7 +548,7 @@ void Initialize(Handle<Object> target,
                 Handle<Context> context) {
  Environment *env = Environment::GetCurrent(context);
 
- NODE_SET_METHOD(target, "postMessage", PostMessage);
+ NODE_SET_METHOD(target, "sendMessage", SendMessage);
  NODE_SET_METHOD(target, "onMessage", OnMessage);
 
  // Start Listen
@@ -563,4 +559,4 @@ void Initialize(Handle<Object> target,
 }  // namespace Async
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(async, node::Async::Initialize)
+NODE_MODULE_CONTEXT_AWARE_BUILTIN(sandbox, node::Sandbox::Initialize)
