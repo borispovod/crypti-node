@@ -13,551 +13,447 @@
 
 
 namespace node {
-namespace Sandbox {
-
-using v8::Context;
-using v8::Function;
-using v8::FunctionCallbackInfo;
-using v8::FunctionTemplate;
-using v8::Handle;
-using v8::HandleScope;
-using v8::Isolate;
-using v8::Local;
-using v8::Object;
-using v8::Persistent;
-using v8::String;
-using v8::Value;
-using v8::TryCatch;
-using v8::JSON;
-using v8::Integer;
-using v8::Number;
-using namespace std;
-
-static unsigned long int unique_id = 1;
-
-struct Sandbox_req
-{
-  const char *data;
-  size_t data_length;
-  Isolate* isolate;
-  unsigned int callback_id;
-
-  Persistent<Function> callback;
-};
-
-uv_pipe_t stdin_pipe;
-uv_pipe_t stdout_pipe;
-
-Persistent<Function> pfn;
-
-struct CBItem
-{
-    unsigned int callback_id;
-    Persistent<Function> callback;
-};
-
-vector<Sandbox_req *> cbs;
-
-
-void OnMessageResponse(const FunctionCallbackInfo<Value>& args);
-
-void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
-{
-  Handle<Object> response;
-
-  Sandbox_req *data = ((struct Sandbox_req*)req->data);
-
-  // Parse the response.
-  Local<String> response_str = String::NewFromUtf8(data->isolate, buf,
-                                                   String::kNormalString, buf_len);
-  Local<Object> global = data->isolate->GetCurrentContext()->Global();
-  Handle<Object> JSON = global->Get(String::NewFromUtf8(
-                                      data->isolate, "JSON"))->ToObject();
-  Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(
-                                  String::NewFromUtf8(data->isolate,
-                                                      "parse")));
-  Local<Value> parse_args[] = { response_str };
-  response = Handle<Object> (JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-  Handle<Value> resp_err = response->Get(String::NewFromUtf8(data->isolate,
-                                                                "error"));
-
-  Local<Value> args[] = {
-    resp_err,
-    response->Get(String::NewFromUtf8(data->isolate, "result"))
-  };
-
-  TryCatch try_catch;
-
-  Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
-  callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-
-  if (try_catch.HasCaught())
-  {
-      FatalException(try_catch);
-  }
-
-  delete req;
-
-  delete data;
-}
-
-
-void registerMessage(uv_work_t *req) {
-    Sandbox_req *data = ((struct Sandbox_req*)req->data);
-    write(4, data->data, data->data_length);
-}
-
-void after_registerMessage(uv_work_t *req, int status) {
-    Sandbox_req *data = ((struct Sandbox_req*)req->data);
+	namespace Sandbox {
+		using v8::Context;
+		using v8::Function;
+		using v8::FunctionCallbackInfo;
+		using v8::FunctionTemplate;
+		using v8::Handle;
+		using v8::HandleScope;
+		using v8::Isolate;
+		using v8::Local;
+		using v8::Object;
+		using v8::Persistent;
+		using v8::String;
+		using v8::Value;
+		using v8::TryCatch;
+		using v8::JSON;
+		using v8::Integer;
+		using v8::Number;
+		using namespace std;
+
+		static unsigned long int unique_id = 1;
+
+		struct Sandbox_req
+		{
+			const char *data;
+			size_t data_length;
+			Isolate* isolate;
+			unsigned int callback_id;
+
+			Persistent<Function> callback;
+		};
+
+		uv_pipe_t stdin_pipe;
+		uv_pipe_t stdout_pipe;
+
+		Persistent<Function> pfn;
+
+		struct CBItem
+		{
+			unsigned int callback_id;
+			Persistent<Function> callback;
+		};
+
+		vector<Sandbox_req *> cbs;
+
+		void OnMessageResponse(const FunctionCallbackInfo<Value>& args);
+		static Handle<Object> jsonParse(Isolate* isolate, Handle<String> input);
+		static uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input);
+
+		void registerMessage(uv_work_t *req) {
+			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			write(4, data->data, data->data_length);
+		}
+
+		void after_registerMessage(uv_work_t *req, int status) {
+			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+
+			// register callback
+			cbs.push_back(data);
+		}
+
+		void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
+			Sandbox_req* request = new Sandbox_req;
+
+			request->data = data;
+			request->data_length = data_length;
+			request->isolate = env->isolate();
+			request->callback.Reset(env->isolate(), callback);
+			request->callback_id = callback_id;
+
+			uv_work_t* req = new uv_work_t();
+			req->data = request;
+			uv_queue_work(env->event_loop(), req, registerMessage, after_registerMessage);
+		}
+
+		/* Pipes */
+
+		// Read
+		void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+			*buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);
+		}
+
+		void recieveWork(uv_work_t *req) {
+		}
+
+		void after_recieveWork(uv_work_t *req, int status) {
+			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
+
+			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
+			Handle<Object> response = jsonParse(data->isolate, response_str);
+
+			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
+			Local<Function> callback =  tpl->GetFunction();
+
+			Local<Value> args[] = {
+				response,
+				callback
+			};
+
+			v8::TryCatch try_catch;
+			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
+			if (try_catch.HasCaught()) {
+				node::FatalException(try_catch);
+			}
+		}
+
+		void findCallback(uv_work_t *req) {
+			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+
+			// find callback
+			unsigned int cb_id = data->callback_id;
+
+			Sandbox_req *callData;
+			for (auto &i : cbs) {
+				if (i->callback_id == data->callback_id) {
+					callData = i;
+					break;
+				}
+			}
+
+			data->callback.Reset(data->isolate, callData->callback);
+		}
 
-    // register callback
-    cbs.push_back(data);
-}
+		void after_findCallback(uv_work_t *req, int status) {
+			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+
+			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
+			Handle<Object> response = jsonParse(data->isolate, response_str);
 
-void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
-  Sandbox_req* request = new Sandbox_req;
+			Local<Value> args[] = {
+				response->Get(String::NewFromUtf8(data->isolate, "error")),
+				response->Get(String::NewFromUtf8(data->isolate, "response"))
+			};
+
+
+			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
+			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
+
+			v8::TryCatch try_catch;
+			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
+			if (try_catch.HasCaught()) {
+				node::FatalException(try_catch);
+			}
+		}
+
+		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
+			Isolate *isolate = Isolate::GetCurrent();
+			Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
+
+			if (nread < 0){
+				if (nread == UV_EOF){
+					uv_close((uv_handle_t *)&stdin_pipe, NULL);
+					uv_close((uv_handle_t *)&stdout_pipe, NULL);
+				}
+			} else if (nread > 0) {
+				// get json and type
+				Handle<String> message = String::NewFromUtf8(env->isolate(), (char*)buf->base,String::kNormalString, nread);
+				Handle<Object> response = jsonParse(env->isolate(), message);
+
+				Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
+
+				if (typeValue->IsNull() || typeValue->IsUndefined()) {
+					return ThrowError(env->isolate(), "needs type argument");
+				}
+
+				Local<String> type = typeValue->ToString();
+
+				if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_call"))) {
+					Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
+
+					if (callback_id->IsNull() || typeValue->IsUndefined()) {
+						return ThrowError(env->isolate(), "needs callback_id argument");
+					}
+
+					if (!callback_id->IsNumber()) {
+						return ThrowError(env->isolate(), "callback_id argument should be a number");
+					}
+
+					Local<Value> messageObj = response->Get(String::NewFromUtf8(env->isolate(), "message"));
+
+					if (messageObj->IsNull() || messageObj->IsUndefined()) {
+						return ThrowError(env->isolate(), "needs message argument");
+					}
+
+					if (!messageObj->IsObject()) {
+						return ThrowError(env->isolate(), "message argument should be an object");
+					}
+
+					Sandbox_req* request = new Sandbox_req;
+					request->data = buf->base;
+					request->data_length = (size_t)nread;
+					request->isolate = env->isolate();
+					request->callback.Reset(env->isolate(), pfn);
+
+					uv_work_t req;
+					req.data = request;
+
+					// call or response
+					uv_queue_work(env->event_loop(), &req, recieveWork, after_recieveWork);
+				} else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
+					Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
+
+					if (callback_id->IsNull() || typeValue->IsUndefined()) {
+						return ThrowError(env->isolate(), "needs callback_id argument");
+					}
+
+					if (!callback_id->IsNumber()) {
+						return ThrowError(env->isolate(), "callback_id argument should be a number");
+					}
+
+					Local<Value> responseObj = response->Get(String::NewFromUtf8(env->isolate(), "response"));
+
+					if (responseObj->IsNull() || responseObj->IsUndefined()) {
+						return ThrowError(env->isolate(), "needs response argument");
+					}
+
+					if (!responseObj->IsObject()) {
+						return ThrowError(env->isolate(), "response argument should be an object");
+					}
+
+					Local<Value> errorObj = response->Get(String::NewFromUtf8(env->isolate(), "error"));
+
+					if (!errorObj->IsNull() && !errorObj->IsUndefined()) {
+						if (!errorObj->IsString()) {
+							return ThrowError(env->isolate(), "response argument should be an string");
+						}
+					}
+
+					// process response
+					Sandbox_req* request = new Sandbox_req;
+					request->data = buf->base;
+					request->data_length = (size_t)nread;
+					request->isolate = env->isolate();
+					request->callback_id = callback_id->ToNumber()->Value();
+
+					uv_work_t req;
+					req.data = request;
+
+					// find callback and call
+					uv_queue_work(env->event_loop(), &req, findCallback, after_findCallback);
+				} else {
+					return ThrowError(env->isolate(), "unknown call type argument");
+				}
+			}
+
+			if (buf->base)
+				free(buf->base);
+		}
 
-  request->data = data;
-  request->data_length = data_length;
-  request->isolate = env->isolate();
-  request->callback.Reset(env->isolate(), callback);
-  request->callback_id = callback_id;
+		void StartListen(Environment *env) {
+		   uv_pipe_init(env->event_loop(), &stdin_pipe, 0);
+		   uv_pipe_open(&stdin_pipe, 3);
 
-  uv_work_t* req = new uv_work_t();
-  req->data = request;
-  uv_queue_work(env->event_loop(), req, registerMessage, after_registerMessage);
-}
+		   uv_read_start((uv_stream_t*)&stdin_pipe, alloc_buffer, read_stdin);
+		}
 
-void AsyncMessage(uv_work_t* req, int something, const char *buf, size_t buf_len)
-{
-  Sandbox_req *data = ((struct Sandbox_req*)req->data);
+		void sendWork(uv_work_t *req) {
+			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			write(4, data->data, data->data_length);
+		}
 
-  Local<Value> args[1] = {
-      String::NewFromUtf8(data->isolate, buf)
-    };
+		void after_sendWork(uv_work_t *req, int status) {}
 
-  TryCatch try_catch;
+		void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
+			Environment* env = Environment::GetCurrent(args.GetIsolate());
+			HandleScope scope(env->isolate());
 
-  Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
-  callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 1, args);
+			if (args.Length() < 1) {
+				return ThrowError(env->isolate(), "needs argument error");
+			}
 
-  if (try_catch.HasCaught())
-  {
-      FatalException(try_catch);
-  }
+			if (!args[0]->IsNull()) {
+				if (!args[0]->IsString()) {
+					return ThrowError(env->isolate(), "error argument should be a string");
+				}
 
-  delete data;
-}
+				Local<Object> response = Object::New(env->isolate());
+				Handle<String> error = Handle<String>::Cast(args[0]);
+				response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
+				response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
 
-static void OnMessage(const FunctionCallbackInfo<Value>& args) {
-    Environment* env = Environment::GetCurrent(args.GetIsolate());
-    HandleScope scope(env->isolate());
+				// get id and find callback
+				Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
-    if (args.Length() < 1) {
-        return ThrowError(env->isolate(), "needs argument object and callback");
-    }
+				if (callback_id->IsNull()) {
+					return ThrowError(env->isolate(), "callback id of response should be provided");
+				}
 
-    if (!args[0]->IsFunction()) {
-        return ThrowError(env->isolate(), "argument should be a callback");
-    }
+				if (!callback_id->IsNumber()) {
+					return ThrowError(env->isolate(), "callback id of response should be a number");
+				}
 
-   pfn.Reset(env->isolate(), args[0].As<Function>());
-}
+				uint8_t* buffer = jsonStringify(env->isolate(), response);
 
-/*
-    Pipes
-*/
+				Sandbox_req* request = new Sandbox_req;
+				request->data = (char*)buffer;
+				request->data_length = strlen((char*)buffer);
+				request->isolate = env->isolate();
 
-// Read
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-    *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);
-}
+				uv_work_t* req = new uv_work_t();
+				req->data = request;
+				uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
+			} else {
+				if (args.Length() < 2) {
+					return ThrowError(env->isolate(), "needs argument error and second agrument response");
+				}
 
-void recieveWork(uv_work_t *req) {
-}
+				if (!args[1]->IsObject()) {
+					return ThrowError(env->isolate(), "error argument should be a object");
+				}
 
-void after_recieveWork(uv_work_t *req, int status) {
-    Sandbox_req *data = ((struct Sandbox_req*)req->data);
-    Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
+				Handle<Object> response = Handle<Object>::Cast(args[1]);
 
-    Handle<Object> response;
-    Local<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
-    Local<Object> global = data->isolate->GetCurrentContext()->Global();
-    Handle<Object> JSON = global->Get(String::NewFromUtf8(data->isolate, "JSON"))->ToObject();
-    Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(data->isolate, "parse")));
+				if (args[0]->IsString()) {
+					Handle<String> error = Handle<String>::Cast(args[0]);
+					response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
+				} else if (!args[0]->IsNull()) {
+					return ThrowError(env->isolate(), "error argument should be a string or null");
+				}
 
-    Local<Value> parse_args[] = { response_str };
-    response = Handle<Object> (JSON_parse->Call(JSON, 1, parse_args)->ToObject());
+				response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
 
+				// get id and find callback
+				Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
-    Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
-    Local<Function> callback =  tpl->GetFunction();
+				if (callback_id->IsNull()) {
+					return ThrowError(env->isolate(), "callback id of response should be provided");
+				}
 
-    Local<Value> args[] = {
-        response,
-        callback
-    };
+				if (!callback_id->IsNumber()) {
+					return ThrowError(env->isolate(), "callback id of response should be a number");
+				}
 
-    v8::TryCatch try_catch;
-    callback_fn->Call(global, 2, args);
-    if (try_catch.HasCaught()) {
-        node::FatalException(try_catch);
-    }
-}
+				uint8_t* buffer = jsonStringify(env->isolate(), response);
 
+				Sandbox_req* request = new Sandbox_req;
+				request->data = (char*)buffer;
+				request->data_length = strlen((char*)buffer);
+				request->isolate = env->isolate();
 
-void findCallback(uv_work_t *req) {
-    Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
-    // find callback
-    unsigned int cb_id = data->callback_id;
+				uv_work_t* req = new uv_work_t();
+				req->data = request;
+				uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
 
-    Sandbox_req *callData;
-    for (auto &i : cbs) {
-        if (i->callback_id == data->callback_id) {
-            callData = i;
-            break;
-        }
-    }
+			}
+		}
 
-    data->callback.Reset(data->isolate, callData->callback);
-}
+		//////////
 
-void after_findCallback(uv_work_t *req, int status) {
-    Sandbox_req *data = ((struct Sandbox_req*)req->data);
+		static Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
+			const int length = input->Utf8Length() + 1;
+			uint8_t* buffer = new uint8_t[length];
+			input->WriteOneByte(buffer, 0, length);
 
-    Handle<Object> response;
-    Local<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
-    Local<Object> global = data->isolate->GetCurrentContext()->Global();
-    Handle<Object> JSON = global->Get(String::NewFromUtf8(data->isolate, "JSON"))->ToObject();
-    Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(data->isolate, "parse")));
+			Local<String> newstr = String::NewFromOneByte(isolate, buffer, String::kNormalString, length);
 
-    Local<Value> parse_args[] = { response_str };
-    response = Handle<Object> (JSON_parse->Call(JSON, 1, parse_args)->ToObject());
+			Local<Object> global = isolate->GetCurrentContext()->Global();
+			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
+			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
 
+			Local<Value> parse_args[] = { newstr };
+			return Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
+		}
 
+		static uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input) {
+			Local<Object> global = isolate->GetCurrentContext()->Global();
+			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 
-    Local<Value> args[] = {
-        response->Get(String::NewFromUtf8(data->isolate, "error")),
-        response->Get(String::NewFromUtf8(data->isolate, "response"))
-    };
+			Local<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "stringify")));
+			Local<Value> stringify_args[] = { input };
+			Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
 
+			const int length = str->Utf8Length() + 1;
+			uint8_t* buffer = new uint8_t[length];
+			str->WriteOneByte(buffer, 0, length);
 
-    Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
-    callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
+			return buffer;
+		}
 
-    v8::TryCatch try_catch;
-    callback_fn->Call(global, 2, args);
-    if (try_catch.HasCaught()) {
-        node::FatalException(try_catch);
-    }
-}
+		static void SendMessage(const FunctionCallbackInfo<Value>& args) {
+			Environment* env = Environment::GetCurrent(args.GetIsolate());
+			HandleScope scope(env->isolate());
 
-void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-    Isolate *isolate = Isolate::GetCurrent();
-    Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
+			if (args.Length() < 2)
+				return ThrowError(env->isolate(), "needs argument object and callback");
 
-    if (nread < 0){
-        if (nread == UV_EOF){
-            uv_close((uv_handle_t *)&stdin_pipe, NULL);
-            uv_close((uv_handle_t *)&stdout_pipe, NULL);
-        }
-    } else if (nread > 0) {
-        // get json and type
-        Local<String> message = String::NewFromUtf8(env->isolate(), (char*)buf->base,String::kNormalString, nread);
-        Local<Object> global = isolate->GetCurrentContext()->Global();
-        Handle<Object> JSON = global->Get(String::NewFromUtf8(env->isolate(), "JSON"))->ToObject();
-        Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(env->isolate(),"parse")));
+			if (!args[1]->IsFunction()) {
+				return ThrowError(env->isolate(), "second argument should be a callback");
+			}
 
-        Local<Value> parse_args[] = { message };
-        Handle<Object> response = Handle<Object>(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-        Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
+			if (args[0]->IsObject()) {
+				Local<Object> messageCall = Local<Object>::Cast(args[0]);
 
-        if (typeValue->IsNull() || typeValue->IsUndefined()) {
-            return ThrowError(env->isolate(), "needs type argument");
-        }
+				Local<Value> messageObj = messageCall->Get(String::NewFromUtf8(env->isolate(), "message"));
 
-        Local<String> type = typeValue->ToString();
+				if (messageObj->IsNull() || messageObj->IsUndefined()) {
+					return ThrowError(env->isolate(), "needs message argument");
+				}
 
-        if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_call"))) {
-            Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
+				if (!messageObj->IsObject()) {
+					return ThrowError(env->isolate(), "message argument should be an object");
+				}
 
-            if (callback_id->IsNull() || typeValue->IsUndefined()) {
-                return ThrowError(env->isolate(), "needs callback_id argument");
-            }
+				unsigned int cb_id = unique_id++;
+				messageCall->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_call"));
+				messageCall->Set(String::NewFromUtf8(env->isolate(), "callback_id"), Integer::New(env->isolate(), cb_id)->ToString());
 
-            if (!callback_id->IsNumber()) {
-                return ThrowError(env->isolate(), "callback_id argument should be a number");
-            }
+				uint8_t* buffer = jsonStringify(env->isolate(), messageCall);
 
-            Local<Value> messageObj = response->Get(String::NewFromUtf8(env->isolate(), "message"));
+				SendMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
+			} else {
+				return ThrowError(env->isolate(), "first argument should be a message object");
+			}
+		}
 
-            if (messageObj->IsNull() || messageObj->IsUndefined()) {
-                return ThrowError(env->isolate(), "needs message argument");
-            }
+		static void OnMessage(const FunctionCallbackInfo<Value>& args) {
+			Environment* env = Environment::GetCurrent(args.GetIsolate());
+			HandleScope scope(env->isolate());
 
-            if (!messageObj->IsObject()) {
-                return ThrowError(env->isolate(), "message argument should be an object");
-            }
+			if (args.Length() < 1) {
+				return ThrowError(env->isolate(), "needs argument object and callback");
+			}
 
-            Sandbox_req* request = new Sandbox_req;
-            request->data = buf->base;
-            request->data_length = (size_t)nread;
-            request->isolate = env->isolate();
-            request->callback.Reset(env->isolate(), pfn);
+			if (!args[0]->IsFunction()) {
+				return ThrowError(env->isolate(), "argument should be a callback");
+			}
 
-            uv_work_t req;
-            req.data = request;
+		   pfn.Reset(env->isolate(), args[0].As<Function>());
+		}
 
-            // call or response
-            uv_queue_work(env->event_loop(), &req, recieveWork, after_recieveWork);
-        } else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
-            Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
+		void Initialize(Handle<Object> target, Handle<Value> unused, Handle<Context> context) {
+			Environment *env = Environment::GetCurrent(context);
 
-            if (callback_id->IsNull() || typeValue->IsUndefined()) {
-                return ThrowError(env->isolate(), "needs callback_id argument");
-            }
+			NODE_SET_METHOD(target, "sendMessage", SendMessage);
+			NODE_SET_METHOD(target, "onMessage", OnMessage);
 
-            if (!callback_id->IsNumber()) {
-                return ThrowError(env->isolate(), "callback_id argument should be a number");
-            }
-
-            Local<Value> responseObj = response->Get(String::NewFromUtf8(env->isolate(), "response"));
-
-            if (responseObj->IsNull() || responseObj->IsUndefined()) {
-                return ThrowError(env->isolate(), "needs response argument");
-            }
-
-            if (!responseObj->IsObject()) {
-                return ThrowError(env->isolate(), "response argument should be an object");
-            }
-
-            Local<Value> errorObj = response->Get(String::NewFromUtf8(env->isolate(), "error"));
-
-            if (!errorObj->IsNull() && !errorObj->IsUndefined()) {
-                if (!errorObj->IsString()) {
-                    return ThrowError(env->isolate(), "response argument should be an string");
-                }
-            }
-
-            // process response
-            Sandbox_req* request = new Sandbox_req;
-            request->data = buf->base;
-            request->data_length = (size_t)nread;
-            request->isolate = env->isolate();
-            request->callback_id = callback_id->ToNumber()->Value();
-
-            uv_work_t req;
-            req.data = request;
-
-            // find callback and call
-            uv_queue_work(env->event_loop(), &req, findCallback, after_findCallback);
-        } else {
-            return ThrowError(env->isolate(), "unknown call type argument");
-        }
-    }
-
-    if (buf->base)
-        free(buf->base);
-}
-
-void StartListen(Environment *env) {
-   uv_pipe_init(env->event_loop(), &stdin_pipe, 0);
-   uv_pipe_open(&stdin_pipe, 3);
-
-   uv_read_start((uv_stream_t*)&stdin_pipe, alloc_buffer, read_stdin);
-}
-
-
-void sendWork(uv_work_t *req) {
-    Sandbox_req *data = ((struct Sandbox_req*)req->data);
-    write(4, data->data, data->data_length);
-}
-
-void after_sendWork(uv_work_t *req, int status) {}
-
-void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
-    Environment* env = Environment::GetCurrent(args.GetIsolate());
-    HandleScope scope(env->isolate());
-
-    if (args.Length() < 1) {
-        return ThrowError(env->isolate(), "needs argument error");
-    }
-
-    if (!args[0]->IsNull()) {
-        if (!args[0]->IsString()) {
-            return ThrowError(env->isolate(), "error argument should be a string");
-        }
-
-        Local<Object> response = Object::New(env->isolate());
-        Handle<String> error = Handle<String>::Cast(args[0]);
-        response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
-        response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
-
-        // get id and find callback
-        Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
-
-        if (callback_id->IsNull()) {
-            return ThrowError(env->isolate(), "callback id of response should be provided");
-        }
-
-        if (!callback_id->IsNumber()) {
-            return ThrowError(env->isolate(), "callback id of response should be a number");
-        }
-
-        Local<Object> global = env->context()->Global();
-
-        Handle<Object> JSON = global->Get(String::NewFromUtf8(
-                                            env->isolate(), "JSON"))->ToObject();
-
-        Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(
-                                            String::NewFromUtf8(env->isolate(),
-                                                                "stringify")));
-        Local<Value> stringify_args[] = { response };
-        Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-
-        const int length = str->Utf8Length() + 1;
-        uint8_t* buffer = new uint8_t[length];
-        //v8::String::Utf8Value m(str);
-        str->WriteOneByte(buffer, 0, length);
-
-        //String::Utf8Value message(str);
-
-        Sandbox_req* request = new Sandbox_req;
-        request->data = (char*)buffer;
-        request->data_length = strlen((char*)buffer);
-        request->isolate = env->isolate();
-
-        uv_work_t* req = new uv_work_t();
-        req->data = request;
-        uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
-    } else {
-        if (args.Length() < 2) {
-            return ThrowError(env->isolate(), "needs argument error and second agrument response");
-        }
-
-        if (!args[1]->IsObject()) {
-            return ThrowError(env->isolate(), "error argument should be a object");
-        }
-
-        Handle<Object> response = Handle<Object>::Cast(args[1]);
-
-        if (args[0]->IsString()) {
-            Handle<String> error = Handle<String>::Cast(args[0]);
-            response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
-        } else if (!args[0]->IsNull()) {
-            return ThrowError(env->isolate(), "error argument should be a string or null");
-        }
-
-        response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
-
-        // get id and find callback
-        Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
-
-        if (callback_id->IsNull()) {
-            return ThrowError(env->isolate(), "callback id of response should be provided");
-        }
-
-        if (!callback_id->IsNumber()) {
-            return ThrowError(env->isolate(), "callback id of response should be a number");
-        }
-
-        Local<Object> global = env->context()->Global();
-
-        Handle<Object> JSON = global->Get(String::NewFromUtf8(
-                                            env->isolate(), "JSON"))->ToObject();
-
-        Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(
-                                            String::NewFromUtf8(env->isolate(),
-                                                                "stringify")));
-        Local<Value> stringify_args[] = { response };
-        Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-        //String::Utf8Value message(str);
-
-        const int length = str->Utf8Length() + 1;  // Add one for trailing zero byte.
-        uint8_t* buffer = new uint8_t[length];
-        //v8::String::Utf8Value m(str);
-        str->WriteOneByte(buffer, 0, length);
-
-        Sandbox_req* request = new Sandbox_req;
-        request->data = (char*)buffer;
-        request->data_length = strlen((char*)buffer);
-        request->isolate = env->isolate();
-
-
-        uv_work_t* req = new uv_work_t();
-        req->data = request;
-        uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
-
-    }
-}
-
-//////////
-
-static void SendMessage(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args.GetIsolate());
-  HandleScope scope(env->isolate());
-
-  if (args.Length() < 2)
-    return ThrowError(env->isolate(), "needs argument object and callback");
-
-  if (!args[1]->IsFunction()) {
-    return ThrowError(env->isolate(), "second argument should be a callback");
-  }
-
-  if (args[0]->IsObject()) {
-    Local<Object> messageCall = Local<Object>::Cast(args[0]);
-
-    Local<Value> messageObj = messageCall->Get(String::NewFromUtf8(env->isolate(), "message"));
-
-    if (messageObj->IsNull() || messageObj->IsUndefined()) {
-        return ThrowError(env->isolate(), "needs message argument");
-    }
-
-    if (!messageObj->IsObject()) {
-        return ThrowError(env->isolate(), "message argument should be an object");
-    }
-
-    unsigned int cb_id = unique_id++;
-    messageCall->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_call"));
-    messageCall->Set(String::NewFromUtf8(env->isolate(), "callback_id"), Integer::New(env->isolate(), cb_id)->ToString());
-
-    // Stringify the JSON
-    Local<Object> global = env->context()->Global();
-    Local<Object> JSON = global->Get(String::NewFromUtf8(
-                                        env->isolate(), "JSON"))->ToObject();
-    Local<Function> JSON_stringify = Local<Function>::Cast(JSON->Get(
-                                        String::NewFromUtf8(env->isolate(),
-                                                            "stringify")));
-    Local<Value> stringify_args[] = { messageCall };
-    Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-    const int length = str->Utf8Length() + 1;  // Add one for trailing zero byte.
-    uint8_t* buffer = new uint8_t[length];
-    //v8::String::Utf8Value m(str);
-    str->WriteOneByte(buffer, 0, length);
-
-    //const char *msg= "{\"test\":\"123\"}";
-    //char *msg = *m;
-    SendMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
-  } else {
-    return ThrowError(env->isolate(), "first argument should be a message object");
-  }
-}
-
-void Initialize(Handle<Object> target,
-                Handle<Value> unused,
-                Handle<Context> context) {
- Environment *env = Environment::GetCurrent(context);
-
- NODE_SET_METHOD(target, "sendMessage", SendMessage);
- NODE_SET_METHOD(target, "onMessage", OnMessage);
-
- // Start Listen
- StartListen(env);
-}
-
-
-}  // namespace Async
+			// Start Listen
+			StartListen(env);
+		}
+	}  // namespace Sandbox
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_BUILTIN(sandbox, node::Sandbox::Initialize)
