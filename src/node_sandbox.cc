@@ -428,8 +428,8 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
         request->data_length = strlen((char*)buffer);
         request->isolate = env->isolate();
 
-        uv_work_t req;
-        req.data = request;
+        uv_work_t* req = new uv_work_t();
+        req->data = request;
         uv_queue_work(env->event_loop(), &req, sendWork, after_sendWork);
     } else {
         if (args.Length() < 2) {
@@ -484,9 +484,10 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
         request->data_length = strlen((char*)buffer);
         request->isolate = env->isolate();
 
-        uv_work_t req;
-        req.data = request;
-        uv_queue_work(env->event_loop(), &req, sendWork, after_sendWork);
+
+        uv_work_t* req = new uv_work_t();
+        req->data = request;
+        uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
 
     }
 }
