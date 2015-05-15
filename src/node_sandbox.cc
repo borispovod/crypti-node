@@ -306,11 +306,11 @@ void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
             request->isolate = env->isolate();
             request->callback.Reset(env->isolate(), pfn);
 
-            uv_work_t* req = new uv_work_t();
-            req->data = request;
+            uv_work_t req;
+            req.data = request;
 
             // call or response
-            uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
+            uv_queue_work(env->event_loop(), &req, recieveWork, after_recieveWork);
         } else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
             Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
@@ -347,11 +347,11 @@ void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
             request->isolate = env->isolate();
             request->callback_id = callback_id->ToNumber()->Value();
 
-            uv_work_t* req = new uv_work_t();
-            req->data = request;
+            uv_work_t req;
+            req.data = request;
 
             // find callback and call
-            uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
+            uv_queue_work(env->event_loop(), &req, findCallback, after_findCallback);
         } else {
             return ThrowError(env->isolate(), "unknown call type argument");
         }
