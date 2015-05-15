@@ -430,7 +430,7 @@ void OnMessageResponse(const FunctionCallbackInfo<Value>& args) {
 
         uv_work_t* req = new uv_work_t();
         req->data = request;
-        uv_queue_work(env->event_loop(), &req, sendWork, after_sendWork);
+        uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
     } else {
         if (args.Length() < 2) {
             return ThrowError(env->isolate(), "needs argument error and second agrument response");
