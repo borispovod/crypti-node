@@ -58,8 +58,12 @@ namespace node {
 		vector<Sandbox_req *> cbs;
 
 		void OnMessageResponse(const FunctionCallbackInfo<Value>& args);
-		static Handle<Object> jsonParse(Isolate* isolate, Handle<String> input);
-		static uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input);
+		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input);
+		uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input);
+
+		void consoleLog(const char* output, ssize_t lenght) {
+			write(0, output, lenght);
+		}
 
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
@@ -121,6 +125,7 @@ namespace node {
 
 		void findCallback(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			consoleLog((char*)data->data, data->data_length);
 
 			// find callback
 			unsigned int cb_id = data->callback_id;
@@ -138,7 +143,6 @@ namespace node {
 
 		void after_findCallback(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 
@@ -169,7 +173,8 @@ namespace node {
 				}
 			} else if (nread > 0) {
 				// get json and type
-				Handle<String> message = String::NewFromUtf8(env->isolate(), (char*)buf->base,String::kNormalString, nread);
+				Handle<String> message = String::NewFromUtf8(env->isolate(), (char*)buf->base, String::kNormalString, nread);
+
 				Handle<Object> response = jsonParse(env->isolate(), message);
 
 				Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
@@ -248,11 +253,14 @@ namespace node {
 					request->isolate = env->isolate();
 					request->callback_id = callback_id->ToNumber()->Value();
 
-					uv_work_t req;
-					req.data = request;
+					uv_work_t *req = new uv_work_t;
+           			req->data = request;
+
+					Sandbox_req *data = ((struct Sandbox_req*)req->data);
+					consoleLog((char*)data->data, data->data_length);
 
 					// find callback and call
-					uv_queue_work(env->event_loop(), &req, findCallback, after_findCallback);
+					uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
 				} else {
 					return ThrowError(env->isolate(), "unknown call type argument");
 				}
@@ -363,22 +371,21 @@ namespace node {
 
 		//////////
 
-		static Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
-			const int length = input->Utf8Length() + 1;
-			uint8_t* buffer = new uint8_t[length];
-			input->WriteOneByte(buffer, 0, length);
-
-			Local<String> newstr = String::NewFromOneByte(isolate, buffer, String::kNormalString, length);
+		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
+//				const int length = input->Utf8Length() + 1;
+//				uint8_t* buffer = new uint8_t[length];
+//				input->WriteOneByte(buffer, 0, length);
+//				consoleLog((char*)buffer, length);
 
 			Local<Object> global = isolate->GetCurrentContext()->Global();
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
 
-			Local<Value> parse_args[] = { newstr };
+			Local<Value> parse_args[] = { input };
 			return Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
 		}
 
-		static uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input) {
+		uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input) {
 			Local<Object> global = isolate->GetCurrentContext()->Global();
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 
