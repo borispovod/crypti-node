@@ -151,9 +151,7 @@ namespace node {
 				response->Get(String::NewFromUtf8(data->isolate, "response"))
 			};
 
-
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
-			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
 
 			v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
@@ -265,9 +263,6 @@ namespace node {
 					return ThrowError(env->isolate(), "unknown call type argument");
 				}
 			}
-
-//			if (buf->base)
-//				free(buf->base);
 		}
 
 		void StartListen(Environment *env) {
