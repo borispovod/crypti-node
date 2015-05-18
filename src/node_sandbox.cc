@@ -266,8 +266,8 @@ namespace node {
 				}
 			}
 
-			if (buf->base)
-				free(buf->base);
+//			if (buf->base)
+//				free(buf->base);
 		}
 
 		void StartListen(Environment *env) {
