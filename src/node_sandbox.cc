@@ -409,21 +409,18 @@ namespace node {
 			if (args[0]->IsObject()) {
 				Local<Object> messageCall = Local<Object>::Cast(args[0]);
 
-				Local<Value> messageObj = messageCall->Get(String::NewFromUtf8(env->isolate(), "message"));
-
-				if (messageObj->IsNull() || messageObj->IsUndefined()) {
-					return ThrowError(env->isolate(), "needs message argument");
-				}
-
-				if (!messageObj->IsObject()) {
+				if (!messageCall->IsObject()) {
 					return ThrowError(env->isolate(), "message argument should be an object");
 				}
 
-				unsigned int cb_id = unique_id++;
-				messageCall->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_call"));
-				messageCall->Set(String::NewFromUtf8(env->isolate(), "callback_id"), Integer::New(env->isolate(), cb_id)->ToString());
+				Local<Object> messageResponse = Object::New(env->isolate());
 
-				uint8_t* buffer = jsonStringify(env->isolate(), messageCall);
+				unsigned int cb_id = unique_id++;
+				messageResponse->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_call"));
+				messageResponse->Set(String::NewFromUtf8(env->isolate(), "callback_id"), Integer::New(env->isolate(), cb_id)->ToString());
+				messageResponse->Set(String::NewFromUtf8(env->isolate(), "message"), messageCall);
+
+				uint8_t* buffer = jsonStringify(env->isolate(), messageResponse);
 
 				SendMessage(env, (char*)buffer, strlen((char*)buffer), cb_id, Handle<Function>::Cast(args[1]));
 			} else {
