@@ -116,6 +116,9 @@ namespace node {
 				callback
 			};
 
+			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
+			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
+
 			v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
 			if (try_catch.HasCaught()) {
@@ -287,81 +290,55 @@ namespace node {
 				return ThrowError(env->isolate(), "needs argument error");
 			}
 
-			if (!args[0]->IsNull()) {
-				if (!args[0]->IsString()) {
-					return ThrowError(env->isolate(), "error argument should be a string");
-				}
-
-				Local<Object> response = Object::New(env->isolate());
-				Handle<String> error = Handle<String>::Cast(args[0]);
-				response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
-				response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
-
-				// get id and find callback
-				Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
-
-				if (callback_id->IsNull()) {
-					return ThrowError(env->isolate(), "callback id of response should be provided");
-				}
-
-				if (!callback_id->IsNumber()) {
-					return ThrowError(env->isolate(), "callback id of response should be a number");
-				}
-
-				uint8_t* buffer = jsonStringify(env->isolate(), response);
-
-				Sandbox_req* request = new Sandbox_req;
-				request->data = (char*)buffer;
-				request->data_length = strlen((char*)buffer);
-				request->isolate = env->isolate();
-
-				uv_work_t* req = new uv_work_t();
-				req->data = request;
-				uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
-			} else {
-				if (args.Length() < 2) {
-					return ThrowError(env->isolate(), "needs argument error and second agrument response");
-				}
-
-				if (!args[1]->IsObject()) {
-					return ThrowError(env->isolate(), "error argument should be a object");
-				}
-
-				Handle<Object> response = Handle<Object>::Cast(args[1]);
-
-				if (args[0]->IsString()) {
-					Handle<String> error = Handle<String>::Cast(args[0]);
-					response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
-				} else if (!args[0]->IsNull()) {
-					return ThrowError(env->isolate(), "error argument should be a string or null");
-				}
-
-				response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
-
-				// get id and find callback
-				Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
-
-				if (callback_id->IsNull()) {
-					return ThrowError(env->isolate(), "callback id of response should be provided");
-				}
-
-				if (!callback_id->IsNumber()) {
-					return ThrowError(env->isolate(), "callback id of response should be a number");
-				}
-
-				uint8_t* buffer = jsonStringify(env->isolate(), response);
-
-				Sandbox_req* request = new Sandbox_req;
-				request->data = (char*)buffer;
-				request->data_length = strlen((char*)buffer);
-				request->isolate = env->isolate();
-
-
-				uv_work_t* req = new uv_work_t();
-				req->data = request;
-				uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
-
+			if (args.Length() < 2) {
+				return ThrowError(env->isolate(), "needs argument error and second agrument response");
 			}
+
+			if (!args[1]->IsObject()) {
+				return ThrowError(env->isolate(), "error argument should be a object");
+			}
+
+			Local<Object> response = Object::New(env->isolate());
+
+			if (!args[0]->IsNull() && args[0]->IsString()) {
+				Local<String> error = Handle<String>::Cast(args[0]);
+				response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
+			} else if (!args[0]->IsNull()) {
+				return ThrowError(env->isolate(), "error argument should be a string or null");
+			}
+
+			Local<Object> message = Local<Object>::Cast(args[1]);
+
+			if (args[0]->IsNull()) {
+				response->Set(String::NewFromUtf8(env->isolate(), "response"), message);
+			}
+
+			response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
+
+			// get id and find callback
+			void* raw = env->isolate()->GetData(0);
+			Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
+
+			if (callback_id->IsNull()) {
+				return ThrowError(env->isolate(), "callback id of response should be provided");
+			}
+
+			if (!callback_id->IsNumber()) {
+				return ThrowError(env->isolate(), "callback id of response should be a number");
+			}
+
+			response->Set(String::NewFromUtf8(env->isolate(), "callback_id"), callback_id);
+
+			uint8_t* buffer = jsonStringify(env->isolate(), response);
+
+			Sandbox_req* request = new Sandbox_req;
+			request->data = (char*)buffer;
+			request->data_length = strlen((char*)buffer);
+			request->isolate = env->isolate();
+
+			uv_work_t* req = new uv_work_t();
+			req->data = request;
+			uv_queue_work(env->event_loop(), req, sendWork, after_sendWork);
 		}
 
 		//////////
