@@ -112,7 +112,7 @@ namespace node {
 			Local<Function> callback =  tpl->GetFunction();
 
 			Local<Value> args[] = {
-				response,
+				response->Get(String::NewFromUtf8(data->isolate, "message")),
 				callback
 			};
 
