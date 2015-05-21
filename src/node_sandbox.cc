@@ -290,14 +290,6 @@ namespace node {
 				return ThrowError(env->isolate(), "needs argument error");
 			}
 
-			if (args.Length() < 2) {
-				return ThrowError(env->isolate(), "needs argument error and second agrument response");
-			}
-
-			if (!args[1]->IsObject()) {
-				return ThrowError(env->isolate(), "error argument should be a object");
-			}
-
 			Local<Object> response = Object::New(env->isolate());
 
 			if (!args[0]->IsNull() && args[0]->IsString()) {
@@ -305,11 +297,17 @@ namespace node {
 				response->Set(String::NewFromUtf8(env->isolate(), "error"), error);
 			} else if (!args[0]->IsNull()) {
 				return ThrowError(env->isolate(), "error argument should be a string or null");
-			}
+			} else if (args[0]->IsNull()) {
+				if (args.Length() < 2) {
+					return ThrowError(env->isolate(), "needs argument error and second agrument response");
+				}
 
-			Local<Object> message = Local<Object>::Cast(args[1]);
+				if (!args[1]->IsObject()) {
+					return ThrowError(env->isolate(), "error argument should be a object");
+				}
 
-			if (args[0]->IsNull()) {
+				Local<Object> message = Local<Object>::Cast(args[1]);
+
 				response->Set(String::NewFromUtf8(env->isolate(), "response"), message);
 			}
 
