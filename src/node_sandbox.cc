@@ -119,7 +119,7 @@ namespace node {
 			};
 
 			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
-			//data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
+			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
 
 			v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
