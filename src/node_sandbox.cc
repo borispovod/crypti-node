@@ -198,6 +198,7 @@ namespace node {
 
 				std::string::size_type start = 0;
 				std::string::size_type finish = 0;
+
 				do {
 					finish = responseStr.find(sep, start);
 					string word = responseStr.substr(start, finish-start);
@@ -235,18 +236,17 @@ namespace node {
                 			if (!messageObj->IsObject()) {
                 				return ThrowError(env->isolate(), "message argument should be an object");
                 			}
-
                 			Sandbox_req* request = new Sandbox_req;
                 			request->data = (char*)jsonObjects[i].c_str();
                             request->data_length = (size_t)jsonObjects[i].size();
                 			request->isolate = env->isolate();
                 			request->callback.Reset(env->isolate(), pfn);
 
-                			uv_work_t req;
-                			req.data = request;
+							uv_work_t *req = new uv_work_t;
+                           	req->data = request;
 
                 			// call or response
-                			uv_queue_work(env->event_loop(), &req, recieveWork, after_recieveWork);
+                			uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
                 		} else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
                 			Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
