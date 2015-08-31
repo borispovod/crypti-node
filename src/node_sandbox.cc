@@ -81,6 +81,7 @@ namespace node {
 
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			consoleLog(data->data.c_str(), data->data.size());
 			write(4, data->data.c_str(), data->data.size());
 		}
 
@@ -116,6 +117,7 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+//			consoleLog(string(data->data));
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
@@ -222,6 +224,8 @@ namespace node {
 						Handle<String> message = String::NewFromUtf8(env->isolate(), jsonObjects[i].c_str(), String::kNormalString, jsonObjects[i].size());
                 		Handle<Object> response = jsonParse(env->isolate(), message);
                 		Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
+                		unsigned int cb_id = unique_id++;
+						response->Set(String::NewFromUtf8(env->isolate(), "callback_id"), Integer::New(env->isolate(), cb_id));
 
                 		if (typeValue->IsNull() || typeValue->IsUndefined()) {
                 			return ThrowError(env->isolate(), "needs type argument");
@@ -260,7 +264,6 @@ namespace node {
                 			// call or response
                 			uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
                 		} else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
-                			return;
                 			Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
                 			if (callback_id->IsNull() || typeValue->IsUndefined()) {
@@ -319,6 +322,7 @@ namespace node {
 
 		void sendWork(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			consoleLog(data->data.c_str(), data->data.size());
 			write(4, data->data.c_str(), data->data.size());
 		}
 
@@ -383,17 +387,12 @@ namespace node {
 		//////////
 
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
-//				const int length = input->Utf8Length() + 1;
-//				uint8_t* buffer = new uint8_t[length];
-//				input->WriteOneByte(buffer, 0, length);
-//				consoleLog((char*)buffer, length);
-
 			Local<Object> global = isolate->GetCurrentContext()->Global();
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
 
 			Local<Value> parse_args[] = { input };
-			//consoleLog(input);
+			consoleLog(input);
 			return Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
 		}
 
