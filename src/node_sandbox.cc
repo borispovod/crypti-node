@@ -67,6 +67,18 @@ namespace node {
 			write(1, output, lenght);
 		}
 
+		void consoleLog(string output) {
+			consoleLog((char*)output.c_str(), output.size());
+		}
+
+		void consoleLog(Handle<String> output) {
+			const int length = output->Utf8Length() + 1;
+			uint8_t* buffer = new uint8_t[length];
+			output->WriteOneByte(buffer, 0, length);
+			consoleLog((char*)buffer, length);
+//			write(1, output, lenght);
+		}
+
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
 			write(4, data->data, data->data_length);
