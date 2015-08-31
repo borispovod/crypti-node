@@ -38,7 +38,7 @@ namespace node {
 
 		struct Sandbox_req
 		{
-			char data[65500];
+			string data;
 			size_t data_length;
 			Isolate* isolate;
 			unsigned int callback_id;
@@ -81,7 +81,7 @@ namespace node {
 
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-			write(4, data->data, data->data_length);
+			write(4, data->data.c_str(), data->data.size());
 		}
 
 		void after_registerMessage(uv_work_t *req, int status) {
@@ -94,8 +94,7 @@ namespace node {
 		void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
 			Sandbox_req* request = new Sandbox_req;
 
-			memcpy(request->data, data, data_length);
-			request->data_length = data_length;
+			request->data = string(data, data_length);
 			request->isolate = env->isolate();
 			request->callback.Reset(env->isolate(), callback);
 			request->callback_id = callback_id;
@@ -117,10 +116,9 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-			consoleLog(string(data->data));
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 
-			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
+			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
 
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 
@@ -162,7 +160,7 @@ namespace node {
 
 		void after_findCallback(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
+			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 
 			Local<Value> args[] = {
@@ -252,9 +250,7 @@ namespace node {
                 			}
 
                 			Sandbox_req* request = new Sandbox_req;
-                			memcpy(request->data, jsonObjects[i].c_str(), jsonObjects[i].size());
-                			//request->data = jsonObjects[i].c_str();
-                            request->data_length = (size_t)jsonObjects[i].size();
+                			request->data = jsonObjects[i];
                 			request->isolate = env->isolate();
                 			request->callback.Reset(env->isolate(), pfn);
 
@@ -295,9 +291,8 @@ namespace node {
 
                 			// process response
                 			Sandbox_req* request = new Sandbox_req;
-                			memcpy(request->data, jsonObjects[i].c_str(), jsonObjects[i].size());
+                			request->data = jsonObjects[i];
                 			//request->data = jsonObjects[i].c_str();
-                            request->data_length = (size_t)jsonObjects[i].size();
                 			request->isolate = env->isolate();
                 			request->callback_id = callback_id->ToNumber()->Value();
 
@@ -324,7 +319,7 @@ namespace node {
 
 		void sendWork(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-			write(4, data->data, data->data_length);
+			write(4, data->data.c_str(), data->data.size());
 		}
 
 		void after_sendWork(uv_work_t *req, int status) {}
@@ -377,8 +372,7 @@ namespace node {
 			uint8_t* buffer = jsonStringify(env->isolate(), response);
 
 			Sandbox_req* request = new Sandbox_req;
-			memcpy(request->data, buffer, strlen((char*)buffer));
-			request->data_length = strlen((char*)buffer);
+			request->data = string((char*)buffer);
 			request->isolate = env->isolate();
 
 			uv_work_t* req = new uv_work_t();
