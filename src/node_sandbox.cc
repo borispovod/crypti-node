@@ -212,7 +212,6 @@ namespace node {
                 		}
 
                 		Local<String> type = typeValue->ToString();
-
                 		if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_call"))) {
                 			Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
@@ -234,7 +233,6 @@ namespace node {
                 				return ThrowError(env->isolate(), "message argument should be an object");
                 			}
 
-							consoleLog("Send this\n", 10);
                 			Sandbox_req* request = new Sandbox_req;
                 			request->data = (char*)jsonObjects[i].c_str();
                             request->data_length = (size_t)jsonObjects[i].size();
