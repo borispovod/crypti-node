@@ -76,11 +76,11 @@ namespace node {
 			uint8_t* buffer = new uint8_t[length];
 			output->WriteOneByte(buffer, 0, length);
 			consoleLog((char*)buffer, length);
-//			write(1, output, lenght);
 		}
 
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+
 			write(4, data->data.c_str(), data->data.size());
 		}
 
@@ -116,7 +116,7 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-//			consoleLog(string(data->data));
+
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
@@ -143,7 +143,6 @@ namespace node {
 
 		void findCallback(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-//			consoleLog((char*)data->data, data->data_length);
 
 			// find callback
 			unsigned int cb_id = data->callback_id;
