@@ -317,7 +317,7 @@ namespace node {
 
 		void StartListen(Environment *env) {
 		   uv_pipe_init(env->event_loop(), &stdin_pipe, 1);
-		   uv_pipe_open(&stdin_pipe, 0);
+		   uv_pipe_open(&stdin_pipe, 3);
 
 		   uv_read_start((uv_stream_t*)&stdin_pipe, alloc_buffer, read_stdin);
 		}
