@@ -12,7 +12,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
-
+#include <cstring>
 
 namespace node {
 	namespace Sandbox {
@@ -64,7 +64,7 @@ namespace node {
 		uint8_t* jsonStringify(Isolate* isolate, Handle<Object> input);
 
 		void consoleLog(const char* output, ssize_t lenght) {
-			write(0, output, lenght);
+			write(1, output, lenght);
 		}
 
 		void registerMessage(uv_work_t *req) {
@@ -130,7 +130,7 @@ namespace node {
 
 		void findCallback(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-			consoleLog((char*)data->data, data->data_length);
+//			consoleLog((char*)data->data, data->data_length);
 
 			// find callback
 			unsigned int cb_id = data->callback_id;
@@ -176,8 +176,11 @@ namespace node {
 				}
 			} else if (nread > 0) {
 				// get json and type
-				string responseStr((char*)buf->base, nread);
 				size_t index = 0;
+				char bb[1024];
+  				memcpy(bb, buf->base, nread);
+  				bb[nread] = 0;
+  				string responseStr(bb, nread);
                 while (true) {
                      /* Locate the substring to replace. */
                      index = responseStr.find("}{", index);
@@ -284,7 +287,7 @@ namespace node {
                            	req->data = request;
 
                 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-                			consoleLog((char*)data->data, data->data_length);
+//                			consoleLog((char*)data->data, data->data_length);
 
                 			// find callback and call
                 			uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
