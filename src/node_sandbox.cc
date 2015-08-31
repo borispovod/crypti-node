@@ -38,7 +38,7 @@ namespace node {
 
 		struct Sandbox_req
 		{
-			const char *data;
+			char data[65500];
 			size_t data_length;
 			Isolate* isolate;
 			unsigned int callback_id;
@@ -68,7 +68,7 @@ namespace node {
 		}
 
 		void consoleLog(string output) {
-			consoleLog((char*)output.c_str(), output.size());
+			consoleLog(output.c_str(), output.size());
 		}
 
 		void consoleLog(Handle<String> output) {
@@ -94,7 +94,7 @@ namespace node {
 		void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
 			Sandbox_req* request = new Sandbox_req;
 
-			request->data = data;
+			memcpy(request->data, data, data_length);
 			request->data_length = data_length;
 			request->isolate = env->isolate();
 			request->callback.Reset(env->isolate(), callback);
@@ -117,9 +117,11 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+			consoleLog(string(data->data));
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
 
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data, String::kNormalString, data->data_length);
+
 			Handle<Object> response = jsonParse(data->isolate, response_str);
 
 			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
@@ -189,7 +191,7 @@ namespace node {
 			} else if (nread > 0) {
 				// get json and type
 				size_t index = 0;
-				char bb[1024];
+				char bb[1024] = "";
   				memcpy(bb, buf->base, nread);
   				bb[nread] = 0;
   				string responseStr(bb, nread);
@@ -248,8 +250,10 @@ namespace node {
                 			if (!messageObj->IsObject()) {
                 				return ThrowError(env->isolate(), "message argument should be an object");
                 			}
+
                 			Sandbox_req* request = new Sandbox_req;
-                			request->data = (char*)jsonObjects[i].c_str();
+                			memcpy(request->data, jsonObjects[i].c_str(), jsonObjects[i].size());
+                			//request->data = jsonObjects[i].c_str();
                             request->data_length = (size_t)jsonObjects[i].size();
                 			request->isolate = env->isolate();
                 			request->callback.Reset(env->isolate(), pfn);
@@ -260,6 +264,7 @@ namespace node {
                 			// call or response
                 			uv_queue_work(env->event_loop(), req, recieveWork, after_recieveWork);
                 		} else if (type->Equals(String::NewFromUtf8(env->isolate(), "crypti_response"))) {
+                			return;
                 			Local<Value> callback_id = response->Get(String::NewFromUtf8(env->isolate(), "callback_id"));
 
                 			if (callback_id->IsNull() || typeValue->IsUndefined()) {
@@ -290,8 +295,9 @@ namespace node {
 
                 			// process response
                 			Sandbox_req* request = new Sandbox_req;
-                			request->data = (char*)jsonObjects[i].c_str();
-                            request->data_length = jsonObjects[i].size();
+                			memcpy(request->data, jsonObjects[i].c_str(), jsonObjects[i].size());
+                			//request->data = jsonObjects[i].c_str();
+                            request->data_length = (size_t)jsonObjects[i].size();
                 			request->isolate = env->isolate();
                 			request->callback_id = callback_id->ToNumber()->Value();
 
@@ -299,7 +305,6 @@ namespace node {
                            	req->data = request;
 
                 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-//                			consoleLog((char*)data->data, data->data_length);
 
                 			// find callback and call
                 			uv_queue_work(env->event_loop(), req, findCallback, after_findCallback);
@@ -311,8 +316,8 @@ namespace node {
 		}
 
 		void StartListen(Environment *env) {
-		   uv_pipe_init(env->event_loop(), &stdin_pipe, 0);
-		   uv_pipe_open(&stdin_pipe, 3);
+		   uv_pipe_init(env->event_loop(), &stdin_pipe, 1);
+		   uv_pipe_open(&stdin_pipe, 0);
 
 		   uv_read_start((uv_stream_t*)&stdin_pipe, alloc_buffer, read_stdin);
 		}
@@ -372,7 +377,7 @@ namespace node {
 			uint8_t* buffer = jsonStringify(env->isolate(), response);
 
 			Sandbox_req* request = new Sandbox_req;
-			request->data = (char*)buffer;
+			memcpy(request->data, buffer, strlen((char*)buffer));
 			request->data_length = strlen((char*)buffer);
 			request->isolate = env->isolate();
 
@@ -394,6 +399,7 @@ namespace node {
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
 
 			Local<Value> parse_args[] = { input };
+			//consoleLog(input);
 			return Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
 		}
 
