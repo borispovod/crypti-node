@@ -374,6 +374,7 @@ namespace node {
 			response->Set(String::NewFromUtf8(env->isolate(), "callback_id"), callback_id);
 
 			uint8_t* buffer = jsonStringify(env->isolate(), response);
+			consoleLog(string((char*)buffer));
 
 			Sandbox_req* request = new Sandbox_req;
 			request->data = string((char*)buffer);
