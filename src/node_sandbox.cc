@@ -188,21 +188,32 @@ namespace node {
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-			 Isolate *isolate = Isolate::GetCurrent();
-             Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
+			Isolate *isolate = Isolate::GetCurrent();
+            Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
 
-			if (nread < 0){
-				if (nread == UV_EOF){
-					uv_close((uv_handle_t *)&stdin_pipe, NULL);
-					uv_close((uv_handle_t *)&stdout_pipe, NULL);
-				}
-			} else if (nread > 0) {
+
+			if (nread < 0 ) {
+    			ASSERT(nread == UV_EOF);
+    			if (buf->base)
+      				free(buf->base);
+    			uv_close((uv_handle_t*)&stdin_pipe, NULL);
+    			uv_close((uv_handle_t*)&stdout_pipe, NULL);
+    			return;
+  			}
+  			if (nread == 0) {
+    			free(buf->base);
+    			return;
+  			}
+
 				// get json and type
 				size_t index = 0;
-				char bb[1024] = "";
-  				memcpy(bb, buf->base, nread);
-  				bb[nread] = 0;
-  				string responseStr(bb, nread);
+//				char bb[1024] = "";
+//  				memcpy(bb, buf->base, nread);
+//  				  							consoleLog(buf->base, nread);
+//
+//  				bb[nread] = 0;
+
+  				string responseStr(buf->base, nread);
 
                 while (true) {
                      /* Locate the substring to replace. */
@@ -320,7 +331,7 @@ namespace node {
                 		return ThrowError(env->isolate(), "unknown call type argument");
                 	}
                 }
-			}
+
 		}
 
 		void StartListen(Environment *env) {
