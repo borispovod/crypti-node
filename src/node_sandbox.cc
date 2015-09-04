@@ -193,6 +193,7 @@ namespace node {
 
 
 			if (nread < 0 ) {
+				consoleLog("reset connect");
     			ASSERT(nread == UV_EOF);
     			if (buf->base)
       				free(buf->base);
