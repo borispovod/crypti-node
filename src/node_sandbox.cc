@@ -215,6 +215,9 @@ namespace node {
 
   				string responseStr(buf->base, nread);
 
+  				if (buf->base)
+      				free(buf->base);
+
                 while (true) {
                      /* Locate the substring to replace. */
                      index = responseStr.find("}{", index);
