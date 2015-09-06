@@ -81,14 +81,16 @@ namespace node {
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
+			cbs.push_back(data);
+
 			write(4, data->data.c_str(), data->data.size());
 		}
 
 		void after_registerMessage(uv_work_t *req, int status) {
-			Sandbox_req *data = ((struct Sandbox_req*)req->data);
+//			Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
 			// register callback
-			cbs.push_back(data);
+//			cbs.push_back(data);
 		}
 
 		void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
@@ -193,6 +195,7 @@ namespace node {
 
 
 			if (nread < 0 ) {
+				consoleLog("reset connect");
     			ASSERT(nread == UV_EOF);
     			if (buf->base)
       				free(buf->base);
@@ -214,6 +217,9 @@ namespace node {
 //  				bb[nread] = 0;
 
   				string responseStr(buf->base, nread);
+
+  				if (buf->base)
+      				free(buf->base);
 
                 while (true) {
                      /* Locate the substring to replace. */
