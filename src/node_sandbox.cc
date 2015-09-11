@@ -220,6 +220,9 @@ namespace node {
   				if (buf->base)
       				free(buf->base);
 
+				consoleLog(responseStr);
+				return;
+
                 while (true) {
                      /* Locate the substring to replace. */
                      index = responseStr.find("}{", index);
