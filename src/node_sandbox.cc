@@ -120,13 +120,9 @@ namespace node {
 
 		void after_recieveWork(uv_work_t *req, int status) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
-
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, pfn);
-
 			Handle<String> response_str = String::NewFromUtf8(data->isolate, data->data.c_str(), String::kNormalString, data->data.size());
-
 			Handle<Object> response = jsonParse(data->isolate, response_str);
-
 			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
 			Local<Function> callback =  tpl->GetFunction();
 
@@ -138,11 +134,11 @@ namespace node {
 			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
 			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
 
-			v8::TryCatch try_catch;
+			//v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			if (try_catch.HasCaught()) {
+			/*if (try_catch.HasCaught()) {
 				node::FatalException(try_catch);
-			}
+			}*/
 		}
 
 		void findCallback(uv_work_t *req) {
@@ -182,13 +178,13 @@ namespace node {
 				response->Get(String::NewFromUtf8(data->isolate, "response"))
 			};
 
-			v8::TryCatch try_catch;
+			//v8::TryCatch try_catch;
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
 
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			if (try_catch.HasCaught()) {
+			/*if (try_catch.HasCaught()) {
 				node::FatalException(try_catch);
-			}
+			}*/
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
@@ -247,7 +243,8 @@ namespace node {
 					start = finish + sep.size();
 				} while (finish != string::npos);
 
-				for (vector<int>::size_type i = 0; i != jsonObjects.size(); i++) {
+
+				for (vector<int>::size_type i = 0; i != jsonObjects.size() - 1; i++) {
 					Handle<String> message = String::NewFromUtf8(env->isolate(), jsonObjects[i].c_str(), String::kNormalString, jsonObjects[i].size());
 					Handle<Object> response = jsonParse(env->isolate(), message);
 					Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
@@ -423,11 +420,11 @@ namespace node {
 
 			Handle<Object> result;
 
-			v8::TryCatch try_catch;
+			//v8::TryCatch try_catch;
 			result = Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-			if (try_catch.HasCaught()) {
+			/*if (try_catch.HasCaught()) {
 				node::FatalException(try_catch);
-			}
+			}*/
 
 			return result;
 		}
