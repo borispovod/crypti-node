@@ -136,11 +136,11 @@ namespace node {
 			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
 			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
 
-			v8::TryCatch try_catch;
+			//v8::TryCatch try_catch;
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			if (try_catch.HasCaught()) {
+			/*if (try_catch.HasCaught()) {
 				node::FatalException(try_catch);
-			}
+			}*/
 		}
 
 		void findCallback(uv_work_t *req) {
@@ -180,19 +180,18 @@ namespace node {
 				response->Get(String::NewFromUtf8(data->isolate, "response"))
 			};
 
-			v8::TryCatch try_catch;
+			//v8::TryCatch try_catch;
 			Local<Function> callback_fn = Local<Function>::New(data->isolate, data->callback);
 
 			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
-			if (try_catch.HasCaught()) {
+			/*if (try_catch.HasCaught()) {
 				node::FatalException(try_catch);
-			}
+			}*/
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
 			Isolate *isolate = Isolate::GetCurrent();
             Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
-
 
 			if (nread < 0 ) {
 				consoleLog("reset connect");
@@ -248,6 +247,7 @@ namespace node {
 
 				for (vector<int>::size_type i = 0; i != jsonObjects.size(); i++) {
 					Handle<String> message = String::NewFromUtf8(env->isolate(), jsonObjects[i].c_str(), String::kNormalString, jsonObjects[i].size());
+                	//consoleLog(message);
                 	Handle<Object> response = jsonParse(env->isolate(), message);
                 	Local<Value> typeValue = response->Get(String::NewFromUtf8(env->isolate(), "type"));
 
@@ -401,7 +401,6 @@ namespace node {
 			response->Set(String::NewFromUtf8(env->isolate(), "callback_id"), callback_id);
 
 			uint8_t* buffer = jsonStringify(env->isolate(), response);
-			consoleLog(string((char*)buffer));
 
 			Sandbox_req* request = new Sandbox_req;
 			request->data = string((char*)buffer);
@@ -423,11 +422,12 @@ namespace node {
 
 			Handle<Object> result;
 
-			v8::TryCatch try_catch;
+			//v8::TryCatch try_catch;
 			result = Handle<Object>::Cast(JSON_parse->Call(JSON, 1, parse_args)->ToObject());
-			if (try_catch.HasCaught()) {
+			/*if (try_catch.HasCaught()) {
+				consoleLog("problem!!!");
 				node::FatalException(try_catch);
-			}
+			}*/
 
 			return result;
 		}
