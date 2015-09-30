@@ -32,6 +32,7 @@ namespace node {
 		using v8::JSON;
 		using v8::Integer;
 		using v8::Number;
+		using v8::V8;
 		using namespace std;
 
 		static unsigned long int unique_id = 1;
@@ -126,16 +127,20 @@ namespace node {
 			Local<FunctionTemplate> tpl = FunctionTemplate::New(data->isolate, OnMessageResponse);
 			Local<Function> callback =  tpl->GetFunction();
 
+//			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
+
+//			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
+
+			Local<Value> callback_id = Integer::New(data->isolate, response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value());
+
 			Local<Value> args[] = {
 				response->Get(String::NewFromUtf8(data->isolate, "message")),
-				callback
+				callback,
+				callback_id
 			};
 
-			intptr_t callback_id = response->Get(String::NewFromUtf8(data->isolate, "callback_id"))->Uint32Value();
-			data->isolate->SetData(0, (void*) reinterpret_cast<void*>(callback_id));
-
 			//v8::TryCatch try_catch;
-			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 2, args);
+			callback_fn->Call(data->isolate->GetCurrentContext()->Global(), 3, args);
 			/*if (try_catch.HasCaught()) {
 				node::FatalException(try_catch);
 			}*/
@@ -188,9 +193,6 @@ namespace node {
 		}
 
 		void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-			Isolate *isolate = Isolate::GetCurrent();
-            Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
-
 			if (nread < 0 ) {
 				consoleLog("reset connect");
     			ASSERT(nread == UV_EOF);
@@ -243,6 +245,8 @@ namespace node {
 					start = finish + sep.size();
 				} while (finish != string::npos);
 
+				Isolate *isolate = Isolate::GetCurrent();
+				Environment *env = Environment::GetCurrent(isolate->GetCurrentContext());
 
 				for (vector<int>::size_type i = 0; i != jsonObjects.size() - 1; i++) {
 					Handle<String> message = String::NewFromUtf8(env->isolate(), jsonObjects[i].c_str(), String::kNormalString, jsonObjects[i].size());
@@ -277,6 +281,16 @@ namespace node {
 						if (!messageObj->IsObject()) {
 							return ThrowError(env->isolate(), "message argument should be an object");
 						}
+
+//						V8::Initialize();
+//						Isolate *isolate = Isolate::New();
+//						v8::Locker locker(isolate);
+//						HandleScope handlescope(isolate);
+//						isolate->Enter();
+//						Local<Context> context = Context::New(isolate);
+//						Persistent<Context> persistentcontext(isolate, context);
+//						Environment* env = Environment::New(context, uv_default_loop());
+//						Context::Scope scope(context);
 
 						Sandbox_req* request = new Sandbox_req;
 						request->data = jsonObjects[i];
@@ -334,6 +348,7 @@ namespace node {
 					} else {
 						return ThrowError(env->isolate(), "unknown call type argument");
 					}
+//					isolate->Exit();
 				}
 			}
 		}
@@ -385,8 +400,10 @@ namespace node {
 			response->Set(String::NewFromUtf8(env->isolate(), "type"), String::NewFromUtf8(env->isolate(), "dapp_response"));
 
 			// get id and find callback
-			void* raw = env->isolate()->GetData(0);
-			Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
+//			void* raw = env->isolate()->GetData(0);
+//			Local<Value> callback_id = Integer::NewFromUnsigned(env->isolate(), (uint32_t) reinterpret_cast<intptr_t>(raw));
+
+			Local<Value> callback_id = Local<Value>::Cast(args[2]);
 
 			if (callback_id->IsNull()) {
 				return ThrowError(env->isolate(), "callback id of response should be provided");
