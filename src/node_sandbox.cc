@@ -325,6 +325,11 @@ namespace node {
 
 						Local<Value> errorObj = response->Get(String::NewFromUtf8(env->isolate(), "error"));
 
+						if (errorObj->IsObject()){
+							Handle<Object> tmp = Handle<Object>::Cast(errorObj);
+							errorObj = String::NewFromUtf8(env->isolate(), (char*)jsonStringify(env->isolate(), tmp));
+						}
+
 						if (!errorObj->IsNull() && !errorObj->IsUndefined()) {
 							if (!errorObj->IsString()) {
 								return ThrowError(env->isolate(), "response argument should be an string");
