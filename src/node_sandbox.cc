@@ -44,7 +44,7 @@ namespace node {
 			Isolate* isolate;
 			unsigned int callback_id;
 
-			Persistent<Function> callback;
+			Persistent<Function, v8::CopyablePersistentTraits<Function> > callback;
 		};
 
 		uv_pipe_t stdin_pipe;
@@ -60,7 +60,8 @@ namespace node {
 			Persistent<Function> callback;
 		};
 
-		vector<Sandbox_req *> cbs;
+		vector<Sandbox_req> cbs;
+		//vector<Sandbox_req> cbs2;
 
 		void OnMessageResponse(const FunctionCallbackInfo<Value>& args);
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input);
@@ -84,9 +85,9 @@ namespace node {
 		void registerMessage(uv_work_t *req) {
 			Sandbox_req *data = ((struct Sandbox_req*)req->data);
 
-			cbs.push_back(data);
+			//cbs.push_back(data);
 
-			write(4, data->data.c_str(), data->data.size());
+			//write(4, data->data.c_str(), data->data.size());
 		}
 
 		void after_registerMessage(uv_work_t *req, int status) {
@@ -97,7 +98,17 @@ namespace node {
 		}
 
 		void SendMessage(Environment* env, const char *data, size_t data_length, unsigned int callback_id, Handle<Function> callback) {
-			Sandbox_req* request = new Sandbox_req;
+			Sandbox_req r;
+			r.data = string(data, data_length);
+			r.isolate = env->isolate();
+			r.callback.Reset(env->isolate(), callback);
+			r.callback_id = callback_id;
+
+			cbs.push_back(r);
+
+			write(4, r.data.c_str(), r.data.size());
+
+			/*Sandbox_req *request = new Sandbox_req;
 
 			request->data = string(data, data_length);
 			request->isolate = env->isolate();
@@ -106,7 +117,7 @@ namespace node {
 
 			uv_work_t* req = new uv_work_t();
 			req->data = request;
-			uv_queue_work(env->event_loop(), req, registerMessage, after_registerMessage);
+			uv_queue_work(env->event_loop(), req, registerMessage, after_registerMessage);*/
 		}
 
 		/* Pipes */
@@ -152,15 +163,27 @@ namespace node {
 			// find callback
 			unsigned int cb_id = data->callback_id;
 
+			consoleLog("Find work\n");
 			bool found = false;
-			Sandbox_req *callData;
-			for (auto &i : cbs) {
+			Sandbox_req callData;
+
+			for (std::vector<Sandbox_req>::size_type i = 0; i != cbs.size(); i++) {
+				if (cbs[i].callback_id == data->callback_id) {
+					found = true;
+					callData = cbs[i];
+					break;
+				}
+            }
+
+            consoleLog("After found\n");
+
+			/*for (auto &i : cbs) {
 				if (i->callback_id == data->callback_id) {
 					found = true;
 					callData = i;
 					break;
 				}
-			}
+			}*/
 
 			if (!found){
 				consoleLog("callback does not found");
@@ -170,7 +193,8 @@ namespace node {
              	return ThrowError(env->isolate(), "callback does not found");
 			}
 
-			data->callback.Reset(data->isolate, callData->callback);
+			consoleLog("Callback found");
+			data->callback.Reset(data->isolate, callData.callback);
 		}
 
 		void after_findCallback(uv_work_t *req, int status) {
