@@ -416,9 +416,9 @@ namespace node {
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
 			Local<Object> global = isolate->GetCurrentContext()->Global();
 
-			Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
+			/*Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
 			Local<Value> decodeURIComponent_args[] = {input};
-			Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();
+			Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();*/
 
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
