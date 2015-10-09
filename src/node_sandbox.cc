@@ -415,6 +415,11 @@ namespace node {
 
 		Handle<Object> jsonParse(Isolate* isolate, Handle<String> input) {
 			Local<Object> global = isolate->GetCurrentContext()->Global();
+
+			Local<Function> decodeURIComponent = Handle<Function>::Cast(global->Get(String::NewFromUtf8(isolate, "decodeURIComponent")));
+			Local<Value> decodeURIComponent_args[] = {input};
+			Local<String> decoded = decodeURIComponent->Call(global, 1, decodeURIComponent_args)->ToString();
+
 			Local<Object> JSON = global->Get(String::NewFromUtf8(isolate, "JSON"))->ToObject();
 			Local<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(isolate, "parse")));
 
@@ -442,9 +447,13 @@ namespace node {
 
 			Local<String> str = String::Concat(JSON_stringify->Call(JSON, 1, stringify_args)->ToString(), magic);
 
-			const int length = str->Utf8Length() + 1;
+			Local<Function> encodeURIComponent = v8::Handle<v8::Function>::Cast(global->Get(String::NewFromUtf8(isolate, "encodeURIComponent")));
+			Local<Value> encodeURIComponent_args[] = {str};
+			Local<String> encoded = encodeURIComponent->Call(global, 1, encodeURIComponent_args)->ToString();
+
+			const int length = encoded->Utf8Length() + 1;
 			uint8_t* buffer = new uint8_t[length];
-			str->WriteOneByte(buffer, 0, length);
+			encoded->WriteOneByte(buffer, 0, length);
 
 			return buffer;
 		}
